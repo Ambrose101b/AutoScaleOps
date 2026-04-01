@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoScaleOps Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container mt-5">
+        <h2 class="mb-4">🚀 AutoScaleOps Control Panel</h2>
+        
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <h5 class="card-title">EC2 Instances</h5>
+                <button class="btn btn-sm btn-primary mb-3" onclick="loadInstances()">🔄 Refresh Data</button>
+                
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Instance ID</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="instance-table-body">
+                        <tr><td colspan="4">Loading instances...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Function to fetch instances from our Python backend
+        async function loadInstances() {
+            const response = await fetch('/api/instances');
+            const data = await response.json();
+            const tbody = document.getElementById('instance-table-body');
+            tbody.innerHTML = '';
+
+            data.instances.forEach(inst => {
+                // Determine badge color based on status
+                let badgeColor = inst.state === 'running' ? 'bg-success' : 'bg-secondary';
+                
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong>${inst.id}</strong></td>
+                        <td>${inst.type}</td>
+                        <td><span class="badge ${badgeColor}">${inst.state}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-success" onclick="controlInstance('${inst.id}', 'start')">Start</button>
+                            <button class="btn btn-sm btn-danger" onclick="controlInstance('${inst.id}', 'stop')">Stop</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // Function to send start/stop commands to our Python backend
+        async function controlInstance(id, action) {
+            alert(`Sending ${action} command to ${id}... please wait.`);
+            await fetch(`/api/instances/${id}/${action}`);
+            loadInstances(); // Reload the table to see the state change
+        }
+
+        // Load data automatically when the page opens
+        window.onload = loadInstances;
+    </script>
+</body>
+</html>
