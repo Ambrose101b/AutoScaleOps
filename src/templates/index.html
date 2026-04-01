@@ -28,44 +28,71 @@
                         <tr><td colspan="4">Loading instances...</td></tr>
                     </tbody>
                 </table>
+
+                <div class="mt-4">
+                    <h5>System Logs (Auto-Scaling Activity)</h5>
+                    <ul id="log-list" class="list-group list-group-flush border rounded bg-white" style="height: 150px; overflow-y: auto;">
+                        <li class="list-group-item text-muted">Waiting for first scan...</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Function to fetch instances from our Python backend
+        // Function to fetch instances and logs from our Python backend
         async function loadInstances() {
-            const response = await fetch('/api/instances');
-            const data = await response.json();
-            const tbody = document.getElementById('instance-table-body');
-            tbody.innerHTML = '';
-
-            data.instances.forEach(inst => {
-                // Determine badge color based on status
-                let badgeColor = inst.state === 'running' ? 'bg-success' : 'bg-secondary';
+            try {
+                const response = await fetch('/api/instances');
+                const data = await response.json();
                 
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong>${inst.id}</strong></td>
-                        <td>${inst.type}</td>
-                        <td><span class="badge ${badgeColor}">${inst.state}</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-success" onclick="controlInstance('${inst.id}', 'start')">Start</button>
-                            <button class="btn btn-sm btn-danger" onclick="controlInstance('${inst.id}', 'stop')">Stop</button>
-                        </td>
-                    </tr>
-                `;
-            });
+                // 1. Update the Instance Table
+                const tbody = document.getElementById('instance-table-body');
+                tbody.innerHTML = '';
+
+                data.instances.forEach(inst => {
+                    let badgeColor = inst.state === 'running' ? 'bg-success' : 'bg-secondary';
+                    
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><strong>${inst.id}</strong></td>
+                            <td>${inst.type}</td>
+                            <td><span class="badge ${badgeColor}">${inst.state}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-success" onclick="controlInstance('${inst.id}', 'start')">Start</button>
+                                <button class="btn btn-sm btn-danger" onclick="controlInstance('${inst.id}', 'stop')">Stop</button>
+                            </td>
+                        </tr>
+                    `;
+
+                    // 2. Update the Log List
+                    // We check if logs exist in the first instance returned
+                    const logList = document.getElementById('log-list');
+                    if (inst.logs && inst.logs.length > 0) {
+                        logList.innerHTML = ''; // Clear the "Waiting" message
+                        // Reverse so the newest logs appear at the top
+                        inst.logs.slice().reverse().forEach(log => {
+                            logList.innerHTML += `<li class="list-group-item small font-monospace">${log}</li>`;
+                        });
+                    }
+                });
+            } catch (error) {
+                console.error("Error loading data:", error);
+            }
         }
 
-        // Function to send start/stop commands to our Python backend
+        // Function to send start/stop commands
         async function controlInstance(id, action) {
-            alert(`Sending ${action} command to ${id}... please wait.`);
+            console.log(`Sending ${action} command to ${id}...`);
             await fetch(`/api/instances/${id}/${action}`);
-            loadInstances(); // Reload the table to see the state change
+            // Wait a second for AWS to register the change before refreshing
+            setTimeout(loadInstances, 1000); 
         }
 
-        // Load data automatically when the page opens
+        // Refresh data every 30 seconds automatically
+        setInterval(loadInstances, 30000);
+
+        // Load data immediately when the page opens
         window.onload = loadInstances;
     </script>
 </body>
