@@ -28,10 +28,9 @@ pipeline {
 
         stage('Deploy Container') {
             steps {
-                echo "Deploying the new container..."
-                // We run the new container on port 9000
-                // Note: We will configure the .env file in Jenkins later
-                sh 'docker run -d -p 9000:8000 --name autoscale-dashboard autoscaleops-app:latest'
+                echo "Deploying the new container with injected AWS secrets..."
+                // The single quotes allow the Linux shell to grab the variables from Jenkins
+                sh 'docker run -d -p 9000:8000 -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY -e AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION --name autoscale-dashboard autoscaleops-app:latest'
             }
         }
     }
